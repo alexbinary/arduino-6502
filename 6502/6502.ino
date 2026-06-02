@@ -1,8 +1,8 @@
 
 const int ADDR[] = {A0,A1,A2,A3};
 const int DATA[] = {D10,D9,D8,D7, D6,D5,D4,D3};
-const int CLK = D2;
-const int RW = A5;
+const int OEB = A4;
+const int WEB = A5;
 
 
 void setup() {
@@ -10,83 +10,96 @@ void setup() {
   Serial.begin(9600);
   while (!Serial);
   
-  for(int i=0; i<4; i++) {
-    pinMode(ADDR[i], INPUT);
-  }
-  pinMode(CLK, OUTPUT);
-  pinMode(RW, INPUT);
-}
-
-
-bool clk = 0;
-int clk_period = 2000;
-
-unsigned char bus_addr = 0;
-unsigned char bus_data = 0;
-
-#define R 1
-#define W 0
-bool bus_rw = 0;
-
-
-void loop() {
-
-  clk = !clk;
-  digitalWrite(CLK, clk);
-  if(clk) {
-    Serial.println("Clock up");
-  } else {
-    Serial.println("Clock down");
-  }
-
-  delay(clk_period/2);
-  readAddr();
-
-  if(bus_rw == R) {
-    unsigned char rom[] = {
-      0xAD, 0x09, 0x00, // $0009 -> A
-      0x6D, 0x0A, 0x00, // A = A + $000A
-      0x8D, 0x0B, 0x00, // A -> $000B
-      0x28,             // $0009
-      0x02,             // $000A
-      0x00,             // $000B
-      0x00, 0x00        // (RV) $FFFC $FFFD
-    };
-    unsigned char data = rom[bus_addr];
-    writeData(data);
-    print(bus_addr, bus_rw, data);
-  } else {
-    readData();
-    print(bus_addr, bus_rw, bus_data);
-  }
+  pinMode(OEB, OUTPUT);
+  pinMode(WEB, OUTPUT);
   
-  delay(clk_period/2);
-}
-
-
-void readAddr() {
-
-  bus_addr = 0;
   for(int i=0; i<4; i++) {
-    bus_addr += digitalRead(ADDR[i]) << i;
+    pinMode(ADDR[i], OUTPUT);
   }
-
-  bus_rw = digitalRead(RW);
-}
-
-void readData() {
-
   for(int i=0; i<8; i++) {
     pinMode(DATA[i], INPUT);
   }
 
-  bus_data = 0;
-  for(int i=0; i<8; i++) {
-    bus_data += digitalRead(DATA[i]) << i;
+  digitalWrite(WEB, HIGH);
+
+  writeROM();
+}
+
+
+void loop() {
+
+  readROM();
+}
+
+void readROM() {
+
+  for(unsigned char addr = 0 ; addr < 0xF ; addr++) {
+    unsigned char data = readByte(addr);
+    char output[25];
+    sprintf(output, "R %01x %02x", addr, data);
+    Serial.println(output);
   }
 }
 
-void writeData(unsigned char data) {
+
+void writeROM() {
+
+  unsigned char rom[] = {
+    0xAD, 0x09, 0x00, // $0009 -> A
+    0x6D, 0x0A, 0x00, // A = A + $000A
+    0x8D, 0x0B, 0x00, // A -> $000B
+    0x28,             // $0009
+    0x02,             // $000A
+    0x00,             // $000B
+    0x00, 0x00        // (RV) $FFFC $FFFD
+  };
+  unsigned char addr = 0x0;
+
+  for(int i=0 ; i<14 ; i++) {
+    unsigned char data = rom[i];
+    char output[25];
+    sprintf(output, "W %01x %02x", addr, data);
+    Serial.println(output);
+    writeByte(addr++, data);
+  }
+}
+
+
+unsigned char readByte(unsigned char addr) {
+
+  unsigned char data;
+
+  setAddr(addr);
+  delay(100);
+  digitalWrite(OEB, LOW);
+  delay(100);
+  data = readData();
+
+  return data;
+}
+
+void writeByte(unsigned char addr, unsigned char data) {
+
+  digitalWrite(OEB, HIGH);
+  delay(100);
+  setAddr(addr);
+  delay(100);
+  digitalWrite(WEB, LOW);
+  delay(100);
+  setData(data);
+  delay(100);
+  digitalWrite(WEB, HIGH);
+  delay(100);
+}
+
+void setAddr(unsigned char addr) {
+
+  for(int i=0; i<4; i++) {
+    digitalWrite(ADDR[i], addr & 1<<i);
+  }
+}
+
+void setData(unsigned char data) {
 
   for(int i=0; i<8; i++) {
     pinMode(DATA[i], OUTPUT);
@@ -97,21 +110,16 @@ void writeData(unsigned char data) {
   }
 }
 
-void print(unsigned char addr, bool rw, unsigned char data) {
+unsigned char readData() {
 
-  char output[25];
-  sprintf(output, " %01x  %c  %02x", addr, rw ? 'R' : 'W', data);
-  Serial.println(output);
+  for(int i=0; i<8; i++) {
+    pinMode(DATA[i], INPUT);
+  }
+
+  unsigned char data = 0;
+  for(int i=0; i<8; i++) {
+    data += digitalRead(DATA[i]) << i;
+  }
+
+  return data;
 }
-
-
-
-
-
-
-
-
-
-
-
-
