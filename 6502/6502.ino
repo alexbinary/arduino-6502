@@ -46,11 +46,11 @@ void writeROM() {
 
   unsigned char rom[] = {
     0xAD, 0x09, 0x00, // $0009 -> A
-    0x6D, 0x0A, 0x00, // A = A + $000A
-    0x8D, 0x0B, 0x00, // A -> $000B
+    0xAD, 0x0A, 0x00, // $000A -> A
+    0x6D, 0x0B, 0x00, // A = A + $000B
     0x28,             // $0009
     0x02,             // $000A
-    0x00,             // $000B
+    0x0A,             // $000B
     0x00, 0x00        // (RV) $FFFC $FFFD
   };
   unsigned char addr = 0x0;
