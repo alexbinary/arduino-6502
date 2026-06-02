@@ -43,12 +43,16 @@ void loop() {
   readAddr();
 
   if(bus_rw == R) {
-    unsigned char data;
-    if(bus_addr == 0xC) {
-      data = 0xEA;
-    } else {
-      data = 0x00;
-    }
+    unsigned char rom[] = {
+      0xAD, 0x09, 0x00, // $0009 -> A
+      0x6D, 0x0A, 0x00, // A = A + $000A
+      0x8D, 0x0B, 0x00, // A -> $000B
+      0x28,             // $0009
+      0x02,             // $000A
+      0x00,             // $000B
+      0x00, 0x00        // (RV) $FFFC $FFFD
+    };
+    unsigned char data = rom[bus_addr];
     writeData(data);
     print(bus_addr, bus_rw, data);
   } else {
