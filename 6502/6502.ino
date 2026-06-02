@@ -4,8 +4,6 @@ const int DATA[] = {D10,D9,D8,D7, D6,D5,D4,D3};
 const int CLK = D2;
 const int RW = A5;
 
-bool trigger = false;
-
 
 void setup() {
   
@@ -15,43 +13,90 @@ void setup() {
   for(int i=0; i<4; i++) {
     pinMode(ADDR[i], INPUT);
   }
-  for(int i=0; i<8; i++) {
-    pinMode(DATA[i], INPUT);
-  }
-  pinMode(CLK, INPUT);
+  pinMode(CLK, OUTPUT);
   pinMode(RW, INPUT);
-  attachInterrupt(digitalPinToInterrupt(CLK), onClock, RISING);
 }
 
-void onClock() {
-  trigger = true;
-}
+
+bool clk = 0;
+int clk_period = 2000;
+
+unsigned char bus_addr = 0;
+unsigned char bus_data = 0;
+
+#define R 1
+#define W 0
+bool bus_rw = 0;
+
 
 void loop() {
 
-  if(trigger) {
-    trigger = false;
-    print();
+  clk = !clk;
+  digitalWrite(CLK, clk);
+  if(clk) {
+    Serial.println("Clock up");
+  } else {
+    Serial.println("Clock down");
   }
+
+  delay(clk_period/2);
+  readAddr();
+
+  if(bus_rw == R) {
+    unsigned char data;
+    if(bus_addr == 0xC) {
+      data = 0xEA;
+    } else {
+      data = 0x00;
+    }
+    writeData(data);
+    print(bus_addr, bus_rw, data);
+  } else {
+    readData();
+    print(bus_addr, bus_rw, bus_data);
+  }
+  
+  delay(clk_period/2);
 }
 
 
-void print() {
+void readAddr() {
 
-  char addr = 0;
+  bus_addr = 0;
   for(int i=0; i<4; i++) {
-    addr += digitalRead(ADDR[i]) << i;
+    bus_addr += digitalRead(ADDR[i]) << i;
   }
 
-  char data = 0;
+  bus_rw = digitalRead(RW);
+}
+
+void readData() {
+
   for(int i=0; i<8; i++) {
-    data += digitalRead(DATA[i]) << i;
+    pinMode(DATA[i], INPUT);
   }
 
-  char rw = digitalRead(RW);
+  bus_data = 0;
+  for(int i=0; i<8; i++) {
+    bus_data += digitalRead(DATA[i]) << i;
+  }
+}
+
+void writeData(unsigned char data) {
+
+  for(int i=0; i<8; i++) {
+    pinMode(DATA[i], OUTPUT);
+  }
+
+  for(int i=0; i<8; i++) {
+    digitalWrite(DATA[i], data & 1<<i);
+  }
+}
+
+void print(unsigned char addr, bool rw, unsigned char data) {
 
   char output[25];
-  sprintf(output, " %04x  %c  %02x", addr, rw ? 'R' : 'W', data);
+  sprintf(output, " %01x  %c  %02x", addr, rw ? 'R' : 'W', data);
   Serial.println(output);
 }
 
