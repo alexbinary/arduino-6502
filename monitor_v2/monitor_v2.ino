@@ -1,7 +1,10 @@
 
-const int ADDR[] = {A0, A1, A2, A3};
-const int CLK = 2;
-bool change = false;
+const int ADDR[] = {A0,A1,A2,A3};
+const int DATA[] = {D10,D9,D8,D7, D6,D5,D4,D3};
+const int CLK = D2;
+const int RW = A5;
+
+bool trigger = false;
 
 
 void setup() {
@@ -12,30 +15,44 @@ void setup() {
   for(int i=0; i<4; i++) {
     pinMode(ADDR[i], INPUT);
   }
-  pinMode(CLK, INPUT_PULLUP);
+  for(int i=0; i<8; i++) {
+    pinMode(DATA[i], INPUT);
+  }
+  pinMode(CLK, INPUT);
+  pinMode(RW, INPUT);
   attachInterrupt(digitalPinToInterrupt(CLK), onClock, RISING);
 }
 
-
 void onClock() {
-  change = !change;
+  trigger = true;
 }
-
-bool previousChange = false;
 
 void loop() {
 
-  if(change != previousChange) {
-    printAddr();
-    previousChange = change;
+  if(trigger) {
+    trigger = false;
+    print();
   }
 }
 
-void printAddr() {
-  for(int i=3; i>=0; i--) {
-    Serial.print(digitalRead(ADDR[i]));
+
+void print() {
+
+  unsigned char addr = 0;
+  for(int i=0; i<4; i++) {
+    addr += digitalRead(ADDR[i]) << i;
   }
-  Serial.println();
+
+  unsigned char data = 0;
+  for(int i=0; i<8; i++) {
+    data += digitalRead(DATA[i]) << i;
+  }
+
+  bool rw = digitalRead(RW);
+
+  char output[25];
+  sprintf(output, " %01x  %c  %02x", addr, rw ? 'R' : 'W', data);
+  Serial.println(output);
 }
 
 

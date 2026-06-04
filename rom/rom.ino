@@ -22,7 +22,7 @@ void setup() {
 
   digitalWrite(WEB, HIGH);
 
-  // writeROM();
+  writeROM();
   readROM();
 }
 
@@ -32,7 +32,7 @@ void loop() {
 
 void readROM() {
 
-  for(unsigned char addr = 0 ; addr < 0xF ; addr++) {
+  for(unsigned char addr = 0 ; addr <= 0xF ; addr++) {
     unsigned char data = readByte(addr);
     char output[25];
     sprintf(output, "R %01x %02x", addr, data);
@@ -50,7 +50,7 @@ void writeROM() {
     0x28,             // $0009
     0x02,             // $000A
     0x0A,             // $000B
-    0x00, 0x00        // (RV) $FFFC $FFFD
+    0xF0, 0xFF        // (RV) $FFFC $FFFD
   };
   unsigned char addr = 0x0;
 
